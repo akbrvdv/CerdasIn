@@ -8,3 +8,20 @@
 body {
   @apply font-sans;
 }
+
+/* Sembunyikan Scroll Bar */
+
+/* Untuk Chrome, Edge, Safari, dan Opera (Webkit) */
+body::-webkit-scrollbar {
+    display: none;
+}
+
+/* Untuk Internet Explorer dan Edge (versi lama) */
+body {
+    -ms-overflow-style: none;  /* IE and Edge */
+}
+
+/* Untuk Firefox */
+html {
+    scrollbar-width: none;  /* Firefox */
+}
