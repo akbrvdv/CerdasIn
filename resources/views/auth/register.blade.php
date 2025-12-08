@@ -15,7 +15,7 @@
             {{-- Card Form --}}
             <div class="rounded-2xl border bg-white p-8 shadow-sm">
                 
-                {{-- Area Pesan Error/Sukses (Diisi via JS, sama seperti Login) --}}
+                {{-- Area Pesan Error/Sukses --}}
                 <div id="status-message" class="mb-4 hidden rounded-md p-3 text-sm text-white"></div>
 
                 {{-- Form Register --}}
@@ -97,31 +97,31 @@
         </div>
     </div>
 
-    {{-- Script untuk Handle Register ke API (Menggunakan Axios sesuai patokan Login) --}}
+    {{-- Script Handle Register --}}
     <script>
         document.getElementById('register-form').addEventListener('submit', async function(e) {
-            e.preventDefault(); // Mencegah reload halaman
+            e.preventDefault();
 
-            // Ambil elemen input
+            // 1. Ambil Data Input
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const password_confirmation = document.getElementById('password_confirmation').value;
             
-            // Ambil elemen UI
+            // 2. Setup UI Elements
             const btnSubmit = document.getElementById('btn-submit');
             const statusMsg = document.getElementById('status-message');
             const errorName = document.getElementById('error-name');
             const errorEmail = document.getElementById('error-email');
             const errorPass = document.getElementById('error-password');
 
-            // Reset tampilan error
+            // Reset Error UI
             statusMsg.classList.add('hidden');
             errorName.classList.add('hidden');
             errorEmail.classList.add('hidden');
             errorPass.classList.add('hidden');
             
-            // Validasi sederhana di frontend (password match)
+            // Validasi Sederhana
             if (password !== password_confirmation) {
                 statusMsg.innerText = "Konfirmasi kata sandi tidak cocok.";
                 statusMsg.classList.remove('hidden', 'bg-green-500');
@@ -129,58 +129,58 @@
                 return;
             }
 
-            // Ubah tombol jadi loading
+            // Set Loading State
             const originalBtnText = btnSubmit.innerText;
             btnSubmit.innerText = 'Memproses...';
             btnSubmit.disabled = true;
 
             try {
-                // Endpoint API Register
-                const apiUrl = 'https://56c8e939278d.ngrok-free.app/api/register';
+                // --- KONFIGURASI URL DINAMIS ---
+                // Mengambil URL dari .env, membersihkan slash di akhir, lalu menambah endpoint
+                const envUrl = "{{ env(key: 'API_BASE_URL') }}";
+                const baseUrl = envUrl.replace(/\/$/, ''); 
+                const apiUrl = `${baseUrl}/api/register`;
 
-                // Mengirim request POST via Axios
+                // --- KIRIM REQUEST ---
                 const response = await axios.post(apiUrl, {
                     name: name,
                     email: email,
                     password: password,
                     password_confirmation: password_confirmation,
-                    role: 'student' // Sesuai instruksi, role diset otomatis
+                    role: 'student' // Role otomatis diset
                 });
 
                 // --- SUKSES ---
                 const data = response.data;
                 
-                // Tampilkan pesan sukses
                 statusMsg.innerText = "Registrasi Berhasil! Anda sedang dialihkan...";
                 statusMsg.classList.remove('hidden', 'bg-red-500');
                 statusMsg.classList.add('bg-green-500');
 
-                // Karena backend register Anda juga mengembalikan token,
-                // Kita bisa langsung login user tersebut tanpa harus ke halaman login dulu.
+                // Auto Login (Simpan Token)
                 if (data.token) {
                     localStorage.setItem('auth_token', data.token);
-                    
                     if(data.user) {
                         localStorage.setItem('user_data', JSON.stringify(data.user));
                     }
                 }
 
-                // Redirect ke Dashboard Student
+                // Redirect ke Dashboard
                 setTimeout(() => {
                     window.location.href = '/student/dashboard';
                 }, 1000);
 
             } catch (error) {
-                // --- GAGAL ---
+                // --- ERROR HANDLING ---
                 console.error('Register Error:', error);
                 
                 let errorMessage = "Terjadi kesalahan pada server.";
                 
                 if (error.response) {
-                    // Pesan dari backend
+                    // Pesan Error dari API
                     errorMessage = error.response.data.message || "Registrasi gagal.";
                     
-                    // Menampilkan error per field jika ada (validasi Laravel)
+                    // Error Per Field
                     if (error.response.data.errors) {
                          if(error.response.data.errors.name) {
                              errorName.innerText = error.response.data.errors.name[0];
@@ -196,16 +196,15 @@
                          }
                     }
                 } else if (error.request) {
-                    errorMessage = "Tidak dapat menghubungi server API.";
+                    errorMessage = "Tidak dapat menghubungi server API. Pastikan backend aktif.";
                 }
 
-                // Tampilkan pesan error utama di atas
                 statusMsg.innerText = errorMessage;
                 statusMsg.classList.remove('hidden', 'bg-green-500');
                 statusMsg.classList.add('bg-red-500');
 
             } finally {
-                // Kembalikan tombol seperti semula
+                // Reset Tombol
                 btnSubmit.innerText = originalBtnText;
                 btnSubmit.disabled = false;
             }
