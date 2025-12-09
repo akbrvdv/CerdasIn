@@ -15,13 +15,13 @@
             {{-- Card Form --}}
             <div class="rounded-2xl border bg-white p-8 shadow-sm">
                 
-                {{-- Area Pesan Error/Sukses (Diisi via JS) --}}
+                {{-- Area Pesan Error/Sukses --}}
                 <div id="status-message" class="mb-4 hidden rounded-md p-3 text-sm text-white"></div>
 
                 {{-- Form Login --}}
-                {{-- Kita hapus action blade route, ganti jadi onsubmit --}}
                 <form id="login-form" class="space-y-6">
                     
+                    {{-- Email --}}
                     <div>
                         <x-input-label for="email" value="Email" class="font-semibold" />
                         <x-text-input 
@@ -33,10 +33,10 @@
                             autofocus 
                             placeholder="contoh@email.com"
                         />
-                        {{-- Error field khusus JS --}}
                         <p id="error-email" class="mt-2 text-sm text-red-600 hidden"></p>
                     </div>
 
+                    {{-- Password --}}
                     <div>
                         <div class="flex items-center justify-between">
                             <x-input-label for="password" value="Kata Sandi" class="font-semibold" />
@@ -54,10 +54,10 @@
                             required 
                             placeholder="Masukkan kata sandi"
                         />
-                         {{-- Error field khusus JS --}}
-                         <p id="error-password" class="mt-2 text-sm text-red-600 hidden"></p>
+                        <p id="error-password" class="mt-2 text-sm text-red-600 hidden"></p>
                     </div>
 
+                    {{-- Remember Me --}}
                     <div class="flex items-center">
                         <input id="remember_me" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-purple-600 shadow-sm focus:ring-purple-500" name="remember">
                         <label for="remember_me" class="ms-2 block text-sm text-gray-700">
@@ -85,80 +85,114 @@
         </div>
     </div>
 
-    {{-- Script untuk Handle Login ke API --}}
+    {{-- Script Handle Login dengan Debugging Lengkap --}}
     <script>
         document.getElementById('login-form').addEventListener('submit', async function(e) {
-            e.preventDefault(); // Mencegah reload halaman
+            e.preventDefault();
+            console.log("--- 1. Form Login Disubmit ---");
 
-            // Ambil elemen
+            // 1. Ambil Data Input
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            
+            console.log("Data yang akan dikirim:", { email: email, password: '***' });
+
+            // 2. Setup UI Elements
             const btnSubmit = document.getElementById('btn-submit');
             const statusMsg = document.getElementById('status-message');
             const errorEmail = document.getElementById('error-email');
             const errorPass = document.getElementById('error-password');
 
-            // Reset tampilan error
+            // Reset Error UI
             statusMsg.classList.add('hidden');
             errorEmail.classList.add('hidden');
             errorPass.classList.add('hidden');
             
-            // Ubah tombol jadi loading
+            // Set Loading State
             const originalBtnText = btnSubmit.innerText;
             btnSubmit.innerText = 'Memproses...';
             btnSubmit.disabled = true;
 
             try {
-                // Endpoint API Anda
-                const apiUrl = 'https://56c8e939278d.ngrok-free.app/api/login';
+                // --- KONFIGURASI URL ---
+                const envUrl = "{{ env('API_BASE_URL', 'http://127.0.0.1:8001') }}";
+                const baseUrl = envUrl.replace(/\/$/, ''); 
+                const apiUrl = `${baseUrl}/api/login`;
+                
+                console.log(`--- 2. Mengirim Request ke: ${apiUrl} ---`);
 
+                // --- KIRIM REQUEST ---
                 const response = await axios.post(apiUrl, {
                     email: email,
                     password: password
                 });
 
+                console.log("--- 3. Respons Diterima dari Server ---");
+                console.log("Raw Response:", response); // Lihat object response Axios lengkap
+
+                // Ambil body JSON
+                const apiResponse = response.data;
+                console.log("Isi Body JSON (apiResponse):", apiResponse);
+
                 // --- SUKSES ---
-                const data = response.data;
-                
-                // Tampilkan pesan sukses
                 statusMsg.innerText = "Login Berhasil! Mengalihkan...";
                 statusMsg.classList.remove('hidden', 'bg-red-500');
                 statusMsg.classList.add('bg-green-500');
 
-                // Simpan Token di LocalStorage
-                if (data.token) {
-                    localStorage.setItem('auth_token', data.token);
-                    
-                    // Simpan data user jika perlu
-                    if(data.user) {
-                        localStorage.setItem('user_data', JSON.stringify(data.user));
-                    }
+                // 1. Cek & Simpan Token
+                if (apiResponse.token) {
+                    localStorage.setItem('auth_token', apiResponse.token);
+                    console.log("✅ Token BERHASIL disimpan ke localStorage:", apiResponse.token.substring(0, 10) + "...");
+                } else {
+                    console.error("❌ Token TIDAK ditemukan di apiResponse.token!");
+                    console.log("Struktur JSON saat ini:", apiResponse);
                 }
 
-                // Redirect ke Dashboard (sesuaikan route dashboard Anda)
-                // Karena ini SPA-like, kita redirect manual via window.location
+                // 2. Cek & Simpan Data User
+                if (apiResponse.user) {
+                    localStorage.setItem('user_data', JSON.stringify(apiResponse.user));
+                    console.log("✅ Data User BERHASIL disimpan:", apiResponse.user);
+                } else {
+                    console.error("❌ Data User TIDAK ditemukan di apiResponse.user!");
+                }
+
+                // 3. Redirect Logic
+                console.log("--- 4. Bersiap Redirect (Delay 1 detik) ---");
                 setTimeout(() => {
-                    // Cek role user untuk redirect yang sesuai (opsional)
-                    if (data.user && data.user.role === 'teacher') {
-                        window.location.href = '/teacher/dashboard'; 
-                    } else if (data.user && data.user.role === 'student') {
-                        window.location.href = '/student/dashboard';
+                    if (apiResponse.user && apiResponse.user.role) {
+                        const role = apiResponse.user.role;
+                        console.log(`Role terdeteksi: ${role}`);
+
+                        if (role === 'teacher') {
+                            console.log("Redirecting to /teacher/dashboard");
+                            window.location.href = '/teacher/dashboard'; 
+                        } else if (role === 'student') {
+                            console.log("Redirecting to /student/dashboard");
+                            window.location.href = '/student/dashboard';
+                        } else {
+                            console.log("Role tidak dikenali, redirecting to /dashboard");
+                            
+                        }
                     } else {
-                        window.location.href = '/dashboard'; 
+                        console.warn("User/Role tidak ada, redirecting default to /dashboard");
+                        
                     }
                 }, 1000);
 
             } catch (error) {
-                // --- GAGAL ---
-                console.error('Login Error:', error);
+                // --- ERROR HANDLING ---
+                console.error("--- ERROR TERJADI ---", error);
                 
                 let errorMessage = "Terjadi kesalahan pada server.";
                 
                 if (error.response) {
-                    // Jika ada respons error dari backend (misal 401 atau 422)
-                    errorMessage = error.response.data.message || "Email atau password salah.";
+                    // Pesan Error dari API
+                    console.log("Status Code:", error.response.status);
+                    console.log("Data Error dari Server:", error.response.data);
+
+                    errorMessage = error.response.data.message || "Login gagal.";
                     
-                    // Jika ada validasi error spesifik
+                    // Error Per Field
                     if (error.response.data.errors) {
                          if(error.response.data.errors.email) {
                              errorEmail.innerText = error.response.data.errors.email[0];
@@ -170,16 +204,17 @@
                          }
                     }
                 } else if (error.request) {
-                    errorMessage = "Tidak dapat menghubungi server API.";
+                    console.error("Tidak ada respons dari server (Network Error?)");
+                    errorMessage = "Tidak dapat menghubungi server API. Pastikan backend aktif.";
                 }
 
-                // Tampilkan pesan error utama
                 statusMsg.innerText = errorMessage;
                 statusMsg.classList.remove('hidden', 'bg-green-500');
                 statusMsg.classList.add('bg-red-500');
 
             } finally {
-                // Kembalikan tombol seperti semula
+                console.log("--- Selesai (Tombol diaktifkan kembali) ---");
+                // Reset Tombol
                 btnSubmit.innerText = originalBtnText;
                 btnSubmit.disabled = false;
             }
