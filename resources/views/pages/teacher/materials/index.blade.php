@@ -44,7 +44,7 @@
     });
 
     // --- KONFIGURASI URL API BARU ANDA ---
-    const BASE_URL = 'https://71870eaf2b39.ngrok-free.app'; // Domain Ngrok Baru
+    const BASE_URL = 'https://31b84deb0ba5.ngrok-free.app'; // Domain Ngrok Baru
     const API_URL = `${BASE_URL}/api/teacher/materials`;    // Endpoint API
     const STORAGE_URL = `${BASE_URL}/storage/`;             // Endpoint untuk akses gambar/file
 
