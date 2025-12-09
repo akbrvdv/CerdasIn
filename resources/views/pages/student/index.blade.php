@@ -66,7 +66,6 @@
             <h2 class="text-lg font-semibold mb-3 text-gray-800">Menu Cepat</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                 
-                {{-- Menu Materi --}}
                 <a id="menu-materi" href="#" class="group flex flex-col items-center justify-center p-6 rounded-xl border bg-gray-50 opacity-60 cursor-not-allowed transition-all duration-300">
                     <div class="h-12 w-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 text-gray-400 group-hover:text-purple-600 group-hover:shadow-md transition-all"> 
                         <i class="fa-solid fa-book-open text-xl"></i> 
@@ -75,7 +74,6 @@
                     <p class="text-sm text-gray-400 mt-1 text-center">Modul & Bahan Ajar</p>
                 </a>
 
-                {{-- Menu Kuis --}}
                 <a id="menu-kuis" href="#" class="group flex flex-col items-center justify-center p-6 rounded-xl border bg-gray-50 opacity-60 cursor-not-allowed transition-all duration-300">
                     <div class="h-12 w-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 text-gray-400 group-hover:text-purple-600 group-hover:shadow-md transition-all"> 
                         <i class="fa-solid fa-puzzle-piece text-xl"></i> 
@@ -84,7 +82,6 @@
                     <p class="text-sm text-gray-400 mt-1 text-center">Latihan & Ujian</p>
                 </a>
 
-                {{-- Menu Nilai --}}
                 <a id="menu-nilai" href="#" class="group flex flex-col items-center justify-center p-6 rounded-xl border bg-gray-50 opacity-60 cursor-not-allowed transition-all duration-300">
                     <div class="h-12 w-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 text-gray-400 group-hover:text-purple-600 group-hover:shadow-md transition-all"> 
                         <i class="fa-solid fa-chart-column text-xl"></i> 
@@ -99,42 +96,44 @@
 
     {{-- 5. JAVASCRIPT LOGIC --}}
     <script>
-        // --- KONFIGURASI DINAMIS DARI .ENV ---
-        // Kita ambil URL dari environment variable Laravel
-        // Jika di .env tidak ada, default ke localhost
-        const ENV_URL = "{{ env('API_BASE_URL') }}";
-        
-        // Bersihkan URL dari slash (/) di akhir jika ada, lalu tambahkan /api
-        const API_BASE_URL = ENV_URL.replace(/\/$/, '') + '/api';
-
-        const token = localStorage.getItem('auth_token');
-
-        // --- INISIALISASI ---
         document.addEventListener('DOMContentLoaded', async () => {
-            // Cek Login
+            // Konfigurasi
+            const ENV_URL = "{{ env('API_BASE_URL', 'http://127.0.0.1:8001') }}";
+            const BASE_URL = ENV_URL.replace(/\/$/, '');
+            const API_URL = `${BASE_URL}/api`;
+            const token = localStorage.getItem('auth_token');
+
             if (!token) {
-                alert('Sesi Anda telah habis. Silakan login kembali.');
                 window.location.href = "{{ route('login') }}";
                 return;
             }
 
-            // Load Data Dashboard
+            // Init
             await initializeDashboard();
         });
 
         // --- FUNGSI UTAMA ---
         async function initializeDashboard() {
             try {
-                const userResponse = await axios.get(`${API_BASE_URL}/student/classrooms`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                // Request Data
+                const responseRaw = await axios.get(`${API_BASE_URL}/student/classrooms`, {
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'ngrok-skip-browser-warning': 'true',
+                        'Content-Type': 'application/json'
+                    }
                 });
 
-                const userData = userResponse.data.data || userResponse.data; 
+                // [PENTING] Bersihkan Data dari PHP Warning
+                const responseClean = parseResponse(responseRaw.data);
+                const userData = responseClean.data || responseClean; 
 
-                // Set Nama User
+                // Render User
                 const nameEl = document.getElementById('user-name');
-                nameEl.innerText = userData.name;
-                nameEl.classList.remove('animate-pulse', 'bg-gray-200', 'text-transparent');
+                if (userData.name) {
+                    nameEl.innerText = userData.name;
+                    nameEl.classList.remove('animate-pulse', 'bg-gray-200', 'text-transparent');
+                }
 
                 // Logic Tampilan
                 if (userData.selected_class_id && userData.selected_class) {
@@ -159,14 +158,22 @@
             container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-4">Memuat opsi kelas...</div>';
 
             try {
-                const response = await axios.get(`${API_BASE_URL}/student/list-classes`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                const responseRaw = await axios.get(`${API_BASE_URL}/student/list-classes`, {
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'ngrok-skip-browser-warning': 'true',
+                        'Content-Type': 'application/json'
+                    }
                 });
 
-                const classes = response.data.data || response.data;
+                // [PENTING] Bersihkan Data
+                const responseClean = parseResponse(responseRaw.data);
+                const classes = responseClean.data || responseClean;
+
                 container.innerHTML = ''; 
 
-                if (classes.length === 0) {
+                // Validasi Array
+                if (!Array.isArray(classes) || classes.length === 0) {
                     container.innerHTML = '<div class="col-span-full text-center text-gray-500">Belum ada kelas tersedia.</div>';
                     return;
                 }
@@ -211,7 +218,12 @@
             try {
                 await axios.post(`${API_BASE_URL}/student/select-class`, 
                     { class_id: classId },
-                    { headers: { 'Authorization': `Bearer ${token}` } }
+                    { 
+                        headers: { 
+                            'Authorization': `Bearer ${token}`,
+                            'ngrok-skip-browser-warning': 'true'
+                        } 
+                    }
                 );
 
                 showAlert(`Berhasil bergabung ke kelas ${className}!`, 'success');
@@ -229,7 +241,7 @@
             }
         }
 
-        // --- RENDER UI KELAS AKTIF ---
+        // --- UTILS ---
         function renderActiveClass(classData) {
             document.getElementById('current-class-section').classList.remove('hidden');
             document.getElementById('current-class-name').innerText = classData.name;
@@ -248,13 +260,11 @@
             el.querySelector('.bg-white').classList.replace('text-gray-400', 'text-purple-600');
         }
 
-        // --- TOGGLE MODE GANTI KELAS ---
         function toggleChangeClassMode() {
             const section = document.getElementById('select-class-section');
             const cancelBtn = document.getElementById('btn-cancel-change');
-            const isHidden = section.classList.contains('hidden');
-
-            if (isHidden) {
+            
+            if (section.classList.contains('hidden')) {
                 section.classList.remove('hidden');
                 cancelBtn.classList.remove('hidden');
                 fetchAndRenderClassList(null); 
@@ -264,36 +274,44 @@
             }
         }
 
-        // --- ALERT ---
         function showAlert(message, type) {
             const box = document.getElementById('alert-container');
             const msgEl = document.getElementById('alert-message');
-            
             msgEl.innerText = message;
+            
+            box.className = "px-4 py-3 rounded-lg border relative mb-5 transition-all duration-300 " + 
+                            (type === 'error' ? 'bg-red-50 border-red-400 text-red-700' : 'bg-green-50 border-green-400 text-green-700');
+            
             box.classList.remove('hidden');
-            
-            // Reset Warna
-            box.className = "px-4 py-3 rounded-lg border relative mb-5 transition-all duration-300";
-            
-            if (type === 'error') {
-                box.classList.add('bg-red-50', 'border-red-400', 'text-red-700');
-            } else {
-                box.classList.add('bg-green-50', 'border-green-400', 'text-green-700');
-            }
-            
-            setTimeout(() => {
-                box.classList.add('hidden');
-            }, 4000);
+            setTimeout(() => box.classList.add('hidden'), 4000);
         }
 
-        // --- ERROR HANDLER ---
         function handleError(error) {
             if (error.response && error.response.status === 401) {
                 localStorage.removeItem('auth_token');
                 window.location.href = "{{ route('login') }}";
             } else {
-                showAlert('Gagal terhubung ke server. Coba muat ulang.', 'error');
+                showAlert('Gagal terhubung ke server.', 'error');
             }
+        }
+
+        // --- Helper: Membersihkan Response dari PHP Warnings (CRITICAL) ---
+        function parseResponse(rawData) {
+            if (typeof rawData === 'string') {
+                const jsonStartIndex = rawData.indexOf('{');
+                const jsonEndIndex = rawData.lastIndexOf('}') + 1;
+                
+                if (jsonStartIndex !== -1) {
+                    const jsonString = rawData.substring(jsonStartIndex, jsonEndIndex);
+                    try {
+                        return JSON.parse(jsonString);
+                    } catch (e) {
+                        console.error("Gagal parsing JSON manual", e);
+                        return rawData;
+                    }
+                }
+            }
+            return rawData;
         }
     </script>
 @endsection
