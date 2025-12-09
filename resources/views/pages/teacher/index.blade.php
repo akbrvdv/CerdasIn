@@ -32,7 +32,6 @@
 {{-- SCRIPT JAVASCRIPT --}}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // 1. Cek Token untuk keamanan dasar (Redirect jika tidak login)
         const token = localStorage.getItem('auth_token');
         if (!token) {
             alert('Anda belum login!');
@@ -40,16 +39,12 @@
             return;
         }
 
-        // 2. Ambil Data User dari LocalStorage
-        // Sesuai dengan file login.blade.php Anda, key-nya adalah 'user_data'
         const userDataString = localStorage.getItem('user_data');
         
         if (userDataString) {
             try {
                 const user = JSON.parse(userDataString);
-                
-                // Update teks Nama di HTML
-                // Pastikan property '.name' ada di object user Anda
+
                 if (user.name) {
                     document.getElementById('user-name').innerText = user.name;
                 } else {
@@ -61,7 +56,6 @@
                 document.getElementById('user-name').innerText = "Guru";
             }
         } else {
-            // Jika token ada tapi data user hilang, bisa fetch ulang atau minta login lagi
             console.warn("Data user tidak ditemukan di LocalStorage.");
             document.getElementById('user-name').innerText = "Guru";
         }
