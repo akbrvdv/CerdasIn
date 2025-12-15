@@ -14,6 +14,7 @@
         <div class="flex justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold text-purple-700 flex items-center gap-2">
+                    {{-- Nama akan diisi dari LocalStorage dulu, baru diupdate API --}}
                     Hai, <span id="user-name" class="animate-pulse bg-gray-200 rounded px-2 text-transparent">User</span>! 👋
                 </h1>
                 <p class="text-gray-600 mt-1">
@@ -66,7 +67,9 @@
             <h2 class="text-lg font-semibold mb-3 text-gray-800">Menu Cepat</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                 
-                <a id="menu-materi" href="#" class="group flex flex-col items-center justify-center p-6 rounded-xl border bg-gray-50 opacity-60 cursor-not-allowed transition-all duration-300">
+                {{-- Menu Materi --}}
+                {{-- Href diarahkan ke route materials.index --}}
+                <a id="menu-materi" href="{{ route('student.materials.index') }}" class="group flex flex-col items-center justify-center p-6 rounded-xl border bg-gray-50 opacity-60 cursor-not-allowed transition-all duration-300">
                     <div class="h-12 w-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 text-gray-400 group-hover:text-purple-600 group-hover:shadow-md transition-all"> 
                         <i class="fa-solid fa-book-open text-xl"></i> 
                     </div>
@@ -74,7 +77,9 @@
                     <p class="text-sm text-gray-400 mt-1 text-center">Modul & Bahan Ajar</p>
                 </a>
 
-                <a id="menu-kuis" href="#" class="group flex flex-col items-center justify-center p-6 rounded-xl border bg-gray-50 opacity-60 cursor-not-allowed transition-all duration-300">
+                {{-- Menu Kuis --}}
+                {{-- Href diarahkan ke route quizzes.index --}}
+                <a id="menu-kuis" href="{{ route('student.quizzes.index') }}" class="group flex flex-col items-center justify-center p-6 rounded-xl border bg-gray-50 opacity-60 cursor-not-allowed transition-all duration-300">
                     <div class="h-12 w-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 text-gray-400 group-hover:text-purple-600 group-hover:shadow-md transition-all"> 
                         <i class="fa-solid fa-puzzle-piece text-xl"></i> 
                     </div>
@@ -82,7 +87,9 @@
                     <p class="text-sm text-gray-400 mt-1 text-center">Latihan & Ujian</p>
                 </a>
 
-                <a id="menu-nilai" href="#" class="group flex flex-col items-center justify-center p-6 rounded-xl border bg-gray-50 opacity-60 cursor-not-allowed transition-all duration-300">
+                {{-- Menu Nilai --}}
+                {{-- Href diarahkan ke route scores.index --}}
+                <a id="menu-nilai" href="{{ route('student.scores.index') }}" class="group flex flex-col items-center justify-center p-6 rounded-xl border bg-gray-50 opacity-60 cursor-not-allowed transition-all duration-300">
                     <div class="h-12 w-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 text-gray-400 group-hover:text-purple-600 group-hover:shadow-md transition-all"> 
                         <i class="fa-solid fa-chart-column text-xl"></i> 
                     </div>
@@ -92,53 +99,66 @@
 
             </div>
         </div>
-    </div>
 
     {{-- 5. JAVASCRIPT LOGIC --}}
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Konfigurasi
-            const ENV_URL = "{{ env('API_BASE_URL') }}";
-            const BASE_URL = ENV_URL.replace(/\/$/, '');
-            const API_URL = `${BASE_URL}/api`;
-            const token = localStorage.getItem('auth_token');
+        // --- KONFIGURASI GLOBAL ---
+        const ENV_URL = "{{ env('API_BASE_URL') }}";
+        const API_BASE_URL = ENV_URL.replace(/\/$/, '') + '/api'; // Perbaikan nama variabel
+        const token = localStorage.getItem('auth_token');
+        
+        // Header Standar (Digunakan di semua request)
+        const apiHeaders = { 
+            'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true',
+            'Content-Type': 'application/json'
+        };
 
+        // --- INISIALISASI ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. Cek Login
             if (!token) {
+                alert('Sesi Anda telah habis. Silakan login kembali.');
                 window.location.href = "{{ route('login') }}";
                 return;
             }
 
-            // Init
+            // 2. Ambil Nama User dari LocalStorage (Supaya Cepat)
+            const storedUser = localStorage.getItem('user_data');
+            if (storedUser) {
+                try {
+                    const user = JSON.parse(storedUser);
+                    updateUserName(user.name);
+                } catch (e) { console.error("Gagal parsing local user data"); }
+            }
+
+            // 3. Load Data Dashboard dari Server
             await initializeDashboard();
         });
 
         // --- FUNGSI UTAMA ---
         async function initializeDashboard() {
             try {
-                // Request Data
-                const responseRaw = await axios.get(`${API_BASE_URL}/student/classrooms`, {
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'ngrok-skip-browser-warning': 'true',
-                        'Content-Type': 'application/json'
-                    }
-                });
+                // Request Data User & Classroom
+                const responseRaw = await axios.get(`${API_BASE_URL}/student/classrooms`, { headers: apiHeaders });
 
-                // [PENTING] Bersihkan Data dari PHP Warning
+                // Bersihkan Data dari PHP Warning
                 const responseClean = parseResponse(responseRaw.data);
                 const userData = responseClean.data || responseClean; 
 
-                // Render User
-                const nameEl = document.getElementById('user-name');
+                // Update Nama User (Data Server lebih valid)
                 if (userData.name) {
-                    nameEl.innerText = userData.name;
-                    nameEl.classList.remove('animate-pulse', 'bg-gray-200', 'text-transparent');
+                    updateUserName(userData.name);
+                    // Update LocalStorage agar data terbaru tersimpan
+                    localStorage.setItem('user_data', JSON.stringify(userData));
                 }
 
-                // Logic Tampilan
+                // Logic Tampilan Kelas
                 if (userData.selected_class_id && userData.selected_class) {
+                    // SUDAH PUNYA KELAS
                     renderActiveClass(userData.selected_class);
                 } else {
+                    // BELUM PUNYA KELAS
                     document.getElementById('instruction-text').classList.remove('hidden');
                     document.getElementById('select-class-section').classList.remove('hidden');
                     await fetchAndRenderClassList(null); 
@@ -158,21 +178,13 @@
             container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-4">Memuat opsi kelas...</div>';
 
             try {
-                const responseRaw = await axios.get(`${API_BASE_URL}/student/list-classes`, {
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'ngrok-skip-browser-warning': 'true',
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const responseRaw = await axios.get(`${API_BASE_URL}/student/classrooms`, { headers: apiHeaders });
 
-                // [PENTING] Bersihkan Data
                 const responseClean = parseResponse(responseRaw.data);
                 const classes = responseClean.data || responseClean;
 
                 container.innerHTML = ''; 
 
-                // Validasi Array
                 if (!Array.isArray(classes) || classes.length === 0) {
                     container.innerHTML = '<div class="col-span-full text-center text-gray-500">Belum ada kelas tersedia.</div>';
                     return;
@@ -218,12 +230,7 @@
             try {
                 await axios.post(`${API_BASE_URL}/student/select-class`, 
                     { class_id: classId },
-                    { 
-                        headers: { 
-                            'Authorization': `Bearer ${token}`,
-                            'ngrok-skip-browser-warning': 'true'
-                        } 
-                    }
+                    { headers: apiHeaders }
                 );
 
                 showAlert(`Berhasil bergabung ke kelas ${className}!`, 'success');
@@ -241,7 +248,13 @@
             }
         }
 
-        // --- UTILS ---
+        // --- UTILS UI ---
+        function updateUserName(name) {
+            const nameEl = document.getElementById('user-name');
+            nameEl.innerText = name;
+            nameEl.classList.remove('animate-pulse', 'bg-gray-200', 'text-transparent');
+        }
+
         function renderActiveClass(classData) {
             document.getElementById('current-class-section').classList.remove('hidden');
             document.getElementById('current-class-name').innerText = classData.name;
@@ -295,7 +308,6 @@
             }
         }
 
-        // --- Helper: Membersihkan Response dari PHP Warnings (CRITICAL) ---
         function parseResponse(rawData) {
             if (typeof rawData === 'string') {
                 const jsonStartIndex = rawData.indexOf('{');
@@ -306,7 +318,6 @@
                     try {
                         return JSON.parse(jsonString);
                     } catch (e) {
-                        console.error("Gagal parsing JSON manual", e);
                         return rawData;
                     }
                 }
