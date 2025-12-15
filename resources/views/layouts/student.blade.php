@@ -55,11 +55,6 @@
                     <i class="fa-solid fa-puzzle-piece w-5"></i>
                     Kuis
                 </a>
-                <a href="{{ route('student.scores.index') }}"
-                    class="flex items-center gap-3 py-2.5 px-4 rounded-lg transition {{ request()->routeIs('student.scores.*') ? 'bg-purple-100 text-purple-700 font-semibold' : 'hover:bg-gray-100' }}">
-                    <i class="fa-solid fa-chart-column w-5"></i>
-                    Nilai
-                </a>
             </nav>
         </aside>
 
