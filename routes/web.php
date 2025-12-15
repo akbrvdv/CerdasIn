@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 // --- HALAMAN PUBLIK / AUTH ---
 
 Route::get('/', function () {
-    return redirect()->route('login'); // Redirect root ke login
+    return redirect()->route('login'); 
 });
 
 Route::get('/login', fn() => view('auth.login'))->name('login');
@@ -47,14 +48,13 @@ Route::prefix('teacher')->name('teacher.')->group(function () {
         // Halaman Daftar Kuis
         Route::get('/', fn() => view('pages.teacher.quizzes.index'))->name('index');
         
-        // Halaman Buat Kuis Baru (PENTING untuk tombol di index)
+        // Halaman Buat Kuis Baru
         Route::get('/create', fn() => view('pages.teacher.quizzes.create'))->name('create');
         
         // Halaman Edit Kuis
         Route::get('/{quiz}/edit', fn() => view('pages.teacher.quizzes.edit'))->name('edit');
 
         // --- Sub-Route: Questions (Kelola Soal) ---
-        // URL: /teacher/quizzes/{quiz_id}/questions
         Route::get('/{quiz}/questions', fn() => view('pages.teacher.questions.index'))->name('questions.index');
         Route::get('/{quiz}/questions/create', fn() => view('pages.teacher.questions.create'))->name('questions.create');
         Route::get('/{quiz}/questions/{question}/edit', fn() => view('pages.teacher.questions.edit'))->name('questions.edit');
@@ -90,3 +90,22 @@ Route::prefix('student')->name('student.')->group(function () {
     });
 
 });
+
+// --- HALAMAN PROFIL (User yang login) ---
+Route::middleware('auth')->group(function () {
+    // Menampilkan halaman detail profil (sesuai ProfileController@show)
+    Route::get('/profile/view', [ProfileController::class, 'show'])->name('profile.show');
+
+    // Menampilkan halaman edit profil (sesuai ProfileController@edit)
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+
+    // Memproses update data profil (sesuai ProfileController@update)
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // Menghapus akun (sesuai ProfileController@destroy)
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// Memuat route autentikasi (login POST, logout, dll)
+// Pastikan file routes/auth.php ada di proyek Anda
+require __DIR__.'/auth.php';
