@@ -98,7 +98,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             // Konfigurasi
-            const ENV_URL = "{{ env('API_BASE_URL', 'http://127.0.0.1:8001') }}";
+            const ENV_URL = "{{ env('API_BASE_URL') }}";
             const BASE_URL = ENV_URL.replace(/\/$/, '');
             const API_URL = `${BASE_URL}/api`;
             const token = localStorage.getItem('auth_token');
